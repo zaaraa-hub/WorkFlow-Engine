@@ -28,6 +28,7 @@ public class Main {
             System.out.println("8. Test Task Retry");
             System.out.println("9. Reset Workflow");
             System.out.println("10. Workflow Summary");
+            System.out.println("11. Clear Execution Logs");
             System.out.println("0. Exit");
             System.out.print("Enter your choice: ");
 
@@ -174,6 +175,9 @@ public class Main {
                     System.out.println("Pending: " + pending);
                     System.out.println("Skipped: " + skipped);
                     System.out.println("Running: " + running);
+                    break;
+                case 11:
+                    logger.clearLogs();
                     break;
 
                 case 0:

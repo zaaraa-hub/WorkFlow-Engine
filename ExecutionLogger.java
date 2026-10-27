@@ -35,4 +35,15 @@ public class ExecutionLogger {
             System.out.println("No execution logs found.");
         }
     }
+
+    public void clearLogs() {
+        try {
+            PrintWriter writer = new PrintWriter("execution.log");
+            writer.close();
+            System.out.println("Execution logs cleared successfully.");
+        } catch (Exception e) {
+            System.out.println("Error clearing execution logs.");
+        }
+    }
+
 }
