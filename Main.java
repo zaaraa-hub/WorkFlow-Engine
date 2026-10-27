@@ -27,6 +27,7 @@ public class Main {
             System.out.println("7. Check Circular Dependencies");
             System.out.println("8. Test Task Retry");
             System.out.println("9. Reset Workflow");
+            System.out.println("10. Workflow Summary");
             System.out.println("0. Exit");
             System.out.print("Enter your choice: ");
 
@@ -141,6 +142,38 @@ public class Main {
                     }
 
                     System.out.println("Workflow statuses reset successfully!");
+                    break;
+
+                case 10:
+                    int completed = 0;
+                    int failed = 0;
+                    int pending = 0;
+                    int skipped = 0;
+                    int running = 0;
+
+                    for (int i = 0; i < taskCount; i++) {
+                        String status = tasks[i].getStatus();
+
+                        if (status.equals("Completed")) {
+                            completed++;
+                        } else if (status.equals("Failed")) {
+                            failed++;
+                        } else if (status.equals("Pending")) {
+                            pending++;
+                        } else if (status.equals("Skipped")) {
+                            skipped++;
+                        } else if (status.equals("Running")) {
+                            running++;
+                        }
+                    }
+
+                    System.out.println("\n===== WORKFLOW SUMMARY =====");
+                    System.out.println("Total tasks: " + taskCount);
+                    System.out.println("Completed: " + completed);
+                    System.out.println("Failed: " + failed);
+                    System.out.println("Pending: " + pending);
+                    System.out.println("Skipped: " + skipped);
+                    System.out.println("Running: " + running);
                     break;
 
                 case 0:
