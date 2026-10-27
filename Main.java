@@ -10,6 +10,9 @@ public class Main {
         task2.setDependencyId(1);
         task3.setDependencyId(2);
 
+        // Simulate Task 1 failing
+        task1.setStatus("Failed");
+
         workflow.addTask(task1);
         workflow.addTask(task2);
         workflow.addTask(task3);
