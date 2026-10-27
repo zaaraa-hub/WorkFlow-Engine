@@ -107,10 +107,20 @@ public class Main {
                     break;
 
                 case 7:
-                    if (checker.hasCircularDependency(tasks, taskCount)) {
-                        System.out.println("Circular dependency detected!");
+                    if (taskCount >= 2) {
+                        int originalDependency = tasks[0].getDependencyId();
+
+                        tasks[0].setDependencyId(tasks[1].getTaskId());
+
+                        if (checker.hasCircularDependency(tasks, taskCount)) {
+                            System.out.println("Circular dependency detected!");
+                        } else {
+                            System.out.println("No circular dependency found.");
+                        }
+
+                        tasks[0].setDependencyId(originalDependency);
                     } else {
-                        System.out.println("No circular dependency found.");
+                        System.out.println("Add at least 2 tasks first.");
                     }
                     break;
 
