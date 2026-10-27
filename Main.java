@@ -26,6 +26,7 @@ public class Main {
             System.out.println("6. View Execution Logs");
             System.out.println("7. Check Circular Dependencies");
             System.out.println("8. Test Task Retry");
+            System.out.println("9. Reset Workflow");
             System.out.println("0. Exit");
             System.out.print("Enter your choice: ");
 
@@ -133,6 +134,13 @@ public class Main {
                     tasks[0].setShouldSucceed(true);
                     engine.executeWorkflow(tasks, taskCount);
                     tasks[0].setShouldSucceed(true);
+                    break;
+                case 9:
+                    for (int i = 0; i < taskCount; i++) {
+                        tasks[i].resetStatus();
+                    }
+
+                    System.out.println("Workflow statuses reset successfully!");
                     break;
 
                 case 0:

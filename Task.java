@@ -52,4 +52,8 @@ public class Task {
         System.out.println("Status: " + status);
         System.out.println("Dependency ID: " + dependencyId);
     }
+
+    public void resetStatus() {
+        this.status = "Pending";
+    }
 }
