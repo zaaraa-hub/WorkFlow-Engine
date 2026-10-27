@@ -29,4 +29,13 @@ public class Workflow {
             tasks[i].displayTask();
         }
     }
+
+    public void clearTasks() {
+        for (int i = 0; i < taskCount; i++) {
+            tasks[i] = null;
+        }
+
+        taskCount = 0;
+    }
+
 }

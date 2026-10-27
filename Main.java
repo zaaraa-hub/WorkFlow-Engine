@@ -91,7 +91,14 @@ public class Main {
                     break;
 
                 case 5:
-                    fileManager.loadTasks();
+                    taskCount = fileManager.loadTasks(tasks);
+
+                    workflow.clearTasks();
+
+                    for (int i = 0; i < taskCount; i++) {
+                        workflow.addTask(tasks[i]);
+                    }
+
                     break;
 
                 case 6:

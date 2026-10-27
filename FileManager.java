@@ -27,21 +27,40 @@ public class FileManager {
         }
     }
 
-    public void loadTasks() {
+    public int loadTasks(Task[] tasks) {
+        int count = 0;
+
         try {
             File file = new File("tasks.txt");
             Scanner reader = new Scanner(file);
 
-            System.out.println("\n===== SAVED TASKS =====");
+            while (reader.hasNextLine() && count < tasks.length) {
+                String line = reader.nextLine();
+                String[] data = line.split(",", 4);
 
-            while (reader.hasNextLine()) {
-                System.out.println(reader.nextLine());
+                if (data.length == 4) {
+                    int id = Integer.parseInt(data[0]);
+                    String name = data[1];
+                    String status = data[2];
+                    int dependencyId = Integer.parseInt(data[3]);
+
+                    Task task = new Task(id, name);
+                    task.setStatus(status);
+                    task.setDependencyId(dependencyId);
+
+                    tasks[count] = task;
+                    count++;
+                }
             }
 
             reader.close();
+            System.out.println("Tasks loaded successfully!");
 
         } catch (Exception e) {
-            System.out.println("No saved tasks found.");
+            System.out.println("Error loading tasks. Check tasks.txt.");
+            return 0;
         }
+
+        return count;
     }
 }
