@@ -25,6 +25,7 @@ public class Main {
             System.out.println("5. Load Saved Tasks");
             System.out.println("6. View Execution Logs");
             System.out.println("7. Check Circular Dependencies");
+            System.out.println("8. Test Task Retry");
             System.out.println("0. Exit");
             System.out.print("Enter your choice: ");
 
@@ -111,6 +112,17 @@ public class Main {
                     } else {
                         System.out.println("No circular dependency found.");
                     }
+                    break;
+
+                case 8:
+                    if (taskCount == 0) {
+                        System.out.println("Add a task first!");
+                        break;
+                    }
+
+                    tasks[0].setShouldSucceed(true);
+                    engine.executeWorkflow(tasks, taskCount);
+                    tasks[0].setShouldSucceed(true);
                     break;
 
                 case 0:

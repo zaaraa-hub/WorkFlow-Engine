@@ -1,16 +1,7 @@
 
-import java.util.Scanner;
-
 public class WorkflowEngine {
-    private DependencyChecker checker;
-    private ExecutionLogger logger;
-    private Scanner input;
-
-    public WorkflowEngine() {
-        checker = new DependencyChecker();
-        logger = new ExecutionLogger();
-        input = new Scanner(System.in);
-    }
+    private DependencyChecker checker = new DependencyChecker();
+    private ExecutionLogger logger = new ExecutionLogger();
 
     public void executeWorkflow(Task[] tasks, int taskCount) {
         System.out.println("\n===== WORKFLOW EXECUTION =====");
@@ -18,10 +9,11 @@ public class WorkflowEngine {
 
         if (checker.hasCircularDependency(tasks, taskCount)) {
             System.out.println("Execution stopped: circular dependency detected.");
-            logger.log("Circular dependency detected.");
+            logger.log("Execution stopped due to circular dependency.");
             return;
         }
 
+        int completedCount = 0;
         boolean progress;
 
         do {
@@ -30,42 +22,40 @@ public class WorkflowEngine {
             for (int i = 0; i < taskCount; i++) {
                 Task task = tasks[i];
 
-                if (task.getStatus().equals("Completed")
-                        || task.getStatus().equals("Failed")) {
-                    continue;
-                }
+                if (task.getStatus().equals("Pending")
+                        && checker.isDependencyCompleted(task, tasks, taskCount)) {
 
-                if (checker.isDependencyCompleted(task, tasks, taskCount)) {
                     task.setStatus("Running");
 
                     boolean success = executeTask(task);
 
                     if (success) {
                         task.setStatus("Completed");
+                        completedCount++;
                         System.out.println("Task " + task.getTaskId()
-                                + " completed successfully.");
+                                + " completed: " + task.getTaskName());
                         logger.log("Task " + task.getTaskId() + " completed.");
-                        progress = true;
                     } else {
                         task.setStatus("Failed");
-                        System.out.println("Task " + task.getTaskId()
-                                + " failed after all retries.");
+                        System.out.println("Task " + task.getTaskId() + " failed.");
                         logger.log("Task " + task.getTaskId() + " failed.");
                     }
+
+                    progress = true;
                 }
             }
         } while (progress);
 
         for (int i = 0; i < taskCount; i++) {
-            if (!tasks[i].getStatus().equals("Completed")
-                    && !tasks[i].getStatus().equals("Failed")) {
+            if (tasks[i].getStatus().equals("Pending")) {
                 tasks[i].setStatus("Skipped");
                 System.out.println("Task " + tasks[i].getTaskId()
-                        + " skipped because its dependency is unavailable.");
+                        + " skipped: dependency unavailable.");
                 logger.log("Task " + tasks[i].getTaskId() + " skipped.");
             }
         }
 
+        System.out.println("\nCompleted in this execution: " + completedCount);
         logger.log("Workflow execution finished.");
     }
 
@@ -76,17 +66,13 @@ public class WorkflowEngine {
             System.out.println("\nExecuting: " + task.getTaskName());
             System.out.println("Attempt " + attempt + " of " + maxAttempts);
 
-            System.out.print("Did this task succeed? (yes/no): ");
-            String answer = input.nextLine();
-
-            if (answer.equalsIgnoreCase("yes")) {
+            if (task.shouldSucceed()) {
                 logger.log("Task " + task.getTaskId()
                         + " succeeded on attempt " + attempt + ".");
                 return true;
             }
 
             System.out.println("Task failed.");
-
             logger.log("Task " + task.getTaskId()
                     + " failed on attempt " + attempt + ".");
 

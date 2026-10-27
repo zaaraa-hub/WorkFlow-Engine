@@ -4,12 +4,14 @@ public class Task {
     private String taskName;
     private String status;
     private int dependencyId;
+    private boolean shouldSucceed;
 
     public Task(int taskId, String taskName) {
         this.taskId = taskId;
         this.taskName = taskName;
         this.status = "Pending";
         this.dependencyId = -1;
+        this.shouldSucceed = true;
     }
 
     public int getTaskId() {
@@ -28,6 +30,10 @@ public class Task {
         return dependencyId;
     }
 
+    public boolean shouldSucceed() {
+        return shouldSucceed;
+    }
+
     public void setStatus(String status) {
         this.status = status;
     }
@@ -36,15 +42,14 @@ public class Task {
         this.dependencyId = dependencyId;
     }
 
+    public void setShouldSucceed(boolean shouldSucceed) {
+        this.shouldSucceed = shouldSucceed;
+    }
+
     public void displayTask() {
         System.out.println("Task ID: " + taskId);
         System.out.println("Task Name: " + taskName);
         System.out.println("Status: " + status);
-
-        if (dependencyId == -1) {
-            System.out.println("Dependency: None");
-        } else {
-            System.out.println("Dependency ID: " + dependencyId);
-        }
+        System.out.println("Dependency ID: " + dependencyId);
     }
 }
