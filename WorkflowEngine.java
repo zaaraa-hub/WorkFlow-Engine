@@ -13,38 +13,53 @@ public class WorkflowEngine {
 
         logger.log("Workflow execution started.");
 
-        for (int i = 0; i < taskCount; i++) {
-            Task currentTask = tasks[i];
+        if (checker.hasCircularDependency(tasks, taskCount)) {
+            System.out.println("Execution stopped: circular dependency detected.");
+            logger.log("Execution stopped due to circular dependency.");
+            return;
+        }
 
-            if (currentTask.getStatus().equals("Failed")) {
-                System.out.println("Task " + currentTask.getTaskId()
-                        + " has failed.");
-                logger.log("Task " + currentTask.getTaskId()
-                        + " failed.");
-                continue;
+        boolean progress;
+        int completedCount = 0;
+
+        do {
+            progress = false;
+
+            for (int i = 0; i < taskCount; i++) {
+                Task task = tasks[i];
+
+                if (task.getStatus().equals("Completed")
+                        || task.getStatus().equals("Failed")) {
+                    continue;
+                }
+
+                if (checker.isDependencyCompleted(task, tasks, taskCount)) {
+                    task.setStatus("Completed");
+                    completedCount++;
+                    progress = true;
+
+                    System.out.println("Task " + task.getTaskId()
+                            + " completed: " + task.getTaskName());
+
+                    logger.log("Task " + task.getTaskId() + " completed.");
+                }
             }
 
-            if (checker.isDependencyCompleted(
-                    currentTask, tasks, taskCount)) {
+        } while (progress);
 
-                currentTask.setStatus("Completed");
+        for (int i = 0; i < taskCount; i++) {
+            if (!tasks[i].getStatus().equals("Completed")
+                    && !tasks[i].getStatus().equals("Failed")) {
+                tasks[i].setStatus("Skipped");
 
-                System.out.println("Task " + currentTask.getTaskId()
-                        + " completed successfully.");
+                System.out.println("Task " + tasks[i].getTaskId()
+                        + " skipped: dependency unavailable.");
 
-                logger.log("Task " + currentTask.getTaskId()
-                        + " completed.");
-
-            } else {
-                currentTask.setStatus("Skipped");
-
-                System.out.println("Task " + currentTask.getTaskId()
-                        + " skipped because its dependency is not completed.");
-
-                logger.log("Task " + currentTask.getTaskId()
-                        + " skipped.");
+                logger.log("Task " + tasks[i].getTaskId() + " skipped.");
             }
         }
+
+        System.out.println("\nCompleted in this execution: " + completedCount);
 
         logger.log("Workflow execution finished.");
     }

@@ -1,19 +1,121 @@
 
+import java.util.Scanner;
+
 public class Main {
     public static void main(String[] args) {
-        Task task1 = new Task(1, "Design Website");
-        Task task2 = new Task(2, "Develop Website");
-        Task task3 = new Task(3, "Test Website");
+        Scanner input = new Scanner(System.in);
 
-        task2.setDependencyId(1);
-        task3.setDependencyId(2);
+        Task[] tasks = new Task[10];
+        int taskCount = 0;
 
-        Task[] tasks = { task1, task2, task3 };
-
+        Workflow workflow = new Workflow(10);
         WorkflowEngine engine = new WorkflowEngine();
-        engine.executeWorkflow(tasks, 3);
-
+        DependencyChecker checker = new DependencyChecker();
+        FileManager fileManager = new FileManager();
         ExecutionLogger logger = new ExecutionLogger();
-        logger.displayLogs();
+
+        int choice;
+
+        do {
+            System.out.println("\n===== TASKFLOW WORKFLOW ENGINE =====");
+            System.out.println("1. Add Task");
+            System.out.println("2. Display Tasks");
+            System.out.println("3. Execute Workflow");
+            System.out.println("4. Save Tasks");
+            System.out.println("5. Load Saved Tasks");
+            System.out.println("6. View Execution Logs");
+            System.out.println("7. Check Circular Dependencies");
+            System.out.println("0. Exit");
+            System.out.print("Enter your choice: ");
+
+            choice = input.nextInt();
+            input.nextLine();
+
+            switch (choice) {
+                case 1:
+                    if (taskCount < tasks.length) {
+                        System.out.print("Enter task ID: ");
+                        int id = input.nextInt();
+                        input.nextLine();
+
+                        boolean duplicate = false;
+
+                        for (int i = 0; i < taskCount; i++) {
+                            if (tasks[i].getTaskId() == id) {
+                                duplicate = true;
+                                break;
+                            }
+                        }
+
+                        if (duplicate) {
+                            System.out.println("Task ID already exists.");
+                            break;
+                        }
+
+                        System.out.print("Enter task name: ");
+                        String name = input.nextLine();
+
+                        Task task = new Task(id, name);
+
+                        System.out.print("Enter dependency ID (-1 for none): ");
+                        int dependencyId = input.nextInt();
+                        input.nextLine();
+
+                        task.setDependencyId(dependencyId);
+
+                        if (!checker.isDependencyValid(
+                                task, tasks, taskCount)) {
+                            System.out.println("Invalid dependency.");
+                            break;
+                        }
+
+                        tasks[taskCount] = task;
+                        taskCount++;
+                        workflow.addTask(task);
+
+                    } else {
+                        System.out.println("Task limit reached.");
+                    }
+                    break;
+
+                case 2:
+                    workflow.displayTasks();
+                    break;
+
+                case 3:
+                    engine.executeWorkflow(tasks, taskCount);
+                    break;
+
+                case 4:
+                    fileManager.saveTasks(tasks, taskCount);
+                    break;
+
+                case 5:
+                    fileManager.loadTasks();
+                    break;
+
+                case 6:
+                    logger.displayLogs();
+                    break;
+
+                case 7:
+                    if (checker.hasCircularDependency(tasks, taskCount)) {
+                        System.out.println("Circular dependency detected!");
+                    } else {
+                        System.out.println("No circular dependency found.");
+                    }
+                    break;
+
+                case 0:
+                    System.out.println("Exiting TaskFlow. Goodbye!");
+                    break;
+
+                default:
+                    System.out.println("Invalid choice. Try again.");
+            }
+
+        } while (choice != 0);
+
+        input.close();
     }
 }
