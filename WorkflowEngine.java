@@ -83,4 +83,22 @@ public class WorkflowEngine {
 
         return false;
     }
+
+    public void executeSingleTask(Task task, Task[] tasks, int taskCount) {
+        if (!task.getStatus().equals("Pending")
+                || !checker.isDependencyCompleted(task, tasks, taskCount)) {
+            return;
+        }
+
+        logger.log("Single task execution started: Task " + task.getTaskId());
+
+        task.setStatus("Running");
+
+        boolean success = executeTask(task);
+
+        task.setStatus(success ? "Completed" : "Failed");
+
+        logger.log("Task " + task.getTaskId()
+                + (success ? " completed." : " failed."));
+    }
 }
