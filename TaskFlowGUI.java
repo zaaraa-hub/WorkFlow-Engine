@@ -13,6 +13,7 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -68,6 +69,10 @@ public class TaskFlowGUI extends JFrame {
     private final JTabbedPane tabs = new JTabbedPane();
     private final JSplitPane mainSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
     private final JLabel logPathLabel = new JLabel();
+    private final JLabel selectionHintLabel = new JLabel();
+    private JTable taskTable;
+    private JButton executeSelectedButton;
+    private JButton deleteButton;
 
     public TaskFlowGUI() {
         super("TaskFlow - Workflow Engine");
@@ -92,7 +97,7 @@ public class TaskFlowGUI extends JFrame {
         int width = Math.min(1100, (int) (screen.width * 0.9));
         int height = Math.min(760, (int) (screen.height * 0.9));
         setSize(width, height);
-        setMinimumSize(new Dimension(840, 580));
+        setMinimumSize(new Dimension(840, 620));
         setLocationRelativeTo(null);
 
         addWindowListener(new WindowAdapter() {
@@ -162,6 +167,13 @@ public class TaskFlowGUI extends JFrame {
 
         // --- task table ---
         JTable table = new JTable(tableModel);
+        taskTable = table;
+        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        table.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                updateSelectionState();
+            }
+        });
         table.setRowHeight(28);
         table.setFont(BASE_FONT);
         table.getTableHeader().setFont(BOLD_FONT);
@@ -178,7 +190,10 @@ public class TaskFlowGUI extends JFrame {
         JScrollPane tableScroll = new JScrollPane(table);
         tableScroll.setBorder(BorderFactory.createTitledBorder("Tasks"));
         tableScroll.setMinimumSize(new Dimension(320, 120));
-        middle.add(tableScroll, BorderLayout.CENTER);
+        JPanel tablePanel = new JPanel(new BorderLayout(0, 6));
+        tablePanel.add(tableScroll, BorderLayout.CENTER);
+        tablePanel.add(buildSelectionToolbar(), BorderLayout.SOUTH);
+        middle.add(tablePanel, BorderLayout.CENTER);
 
         // --- add task form (inside a scroll pane, so it is never clipped) ---
         JPanel form = new JPanel(new GridBagLayout());
@@ -224,6 +239,24 @@ public class TaskFlowGUI extends JFrame {
         formScroll.setMinimumSize(new Dimension(280, 100));
         middle.add(formScroll, BorderLayout.EAST);
         return middle;
+    }
+
+    /** Buttons that act on the row selected in the task table. */
+    private JPanel buildSelectionToolbar() {
+        JPanel bar = new JPanel(new BorderLayout(10, 0));
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+
+        executeSelectedButton = makeButton("Execute Selected", e -> handleExecuteSelected());
+        deleteButton = makeButton("Delete Task", e -> handleDeleteTask());
+        buttons.add(executeSelectedButton);
+        buttons.add(deleteButton);
+
+        selectionHintLabel.setFont(BASE_FONT);
+        selectionHintLabel.setForeground(Color.DARK_GRAY);
+
+        bar.add(buttons, BorderLayout.WEST);
+        bar.add(selectionHintLabel, BorderLayout.CENTER);
+        return bar;
     }
 
     private void addFormRow(JPanel form, int row, String labelText, Component field) {
@@ -355,6 +388,36 @@ public class TaskFlowGUI extends JFrame {
         showResult(service.checkCircularDependencies());
     }
 
+    private void handleExecuteSelected() {
+        TaskFlowService.Result result = service.executeSelectedTask(taskTable.getSelectedRow());
+        if (!result.getConsoleOutput().isEmpty()) {
+            appendOutput("Execute Selected Task", result.getConsoleOutput());
+        }
+        showResult(result);
+        refreshAll();
+        tabs.setSelectedIndex(0);
+    }
+
+    private void handleDeleteTask() {
+        int row = taskTable.getSelectedRow();
+        String blocked = service.getDeleteBlockReason(row);
+        if (blocked != null) {
+            showStatus(false, blocked);
+            return;
+        }
+
+        Task task = service.getTask(row);
+        int answer = JOptionPane.showConfirmDialog(this,
+                "Delete Task " + task.getTaskId() + " (" + task.getTaskName() + ")?\n"
+                        + "The change reaches tasks.txt only when you press Save Tasks.",
+                "Delete Task", JOptionPane.YES_NO_OPTION);
+        if (answer != JOptionPane.YES_OPTION) {
+            return;
+        }
+        showResult(service.deleteTask(row));
+        refreshAll();
+    }
+
     private void handleSave() {
         TaskFlowService.Result result = service.saveTasks();
         appendOutput("Save Tasks", result.getConsoleOutput());
@@ -399,10 +462,55 @@ public class TaskFlowGUI extends JFrame {
     // ==================================================================
 
     private void refreshAll() {
+        int keepId = selectedTaskId();
         tableModel.fireTableDataChanged();
+        restoreSelection(keepId);
         updateSummary();
         refreshDependencyOptions();
         refreshLogs();
+        updateSelectionState();
+    }
+
+    /** ID of the task selected in the table, or -1 when nothing is selected. */
+    private int selectedTaskId() {
+        Task task = service.getTask(taskTable.getSelectedRow());
+        return (task == null) ? -1 : task.getTaskId();
+    }
+
+    /** Re-selects the same task after the table was rebuilt (it disappears if the task was deleted). */
+    private void restoreSelection(int taskId) {
+        if (taskId == -1) {
+            return;
+        }
+        for (int i = 0; i < service.getTaskCount(); i++) {
+            if (service.getTask(i).getTaskId() == taskId) {
+                taskTable.setRowSelectionInterval(i, i);
+                return;
+            }
+        }
+    }
+
+    /** Enables the Execute Selected / Delete Task buttons only when a row is selected, and explains blocks in tooltips. */
+    private void updateSelectionState() {
+        int row = taskTable.getSelectedRow();
+        Task task = service.getTask(row);
+        boolean hasSelection = (task != null);
+
+        executeSelectedButton.setEnabled(hasSelection);
+        deleteButton.setEnabled(hasSelection);
+
+        if (!hasSelection) {
+            selectionHintLabel.setText("Select a row first.");
+            executeSelectedButton.setToolTipText("Select a task in the table first.");
+            deleteButton.setToolTipText("Select a task in the table first.");
+            return;
+        }
+
+        selectionHintLabel.setText("Selected: Task " + task.getTaskId() + " - " + task.getTaskName());
+        String runReason = service.getExecutionBlockReason(row);
+        executeSelectedButton.setToolTipText(runReason == null ? "Run only this task." : runReason);
+        String deleteReason = service.getDeleteBlockReason(row);
+        deleteButton.setToolTipText(deleteReason == null ? "Remove this task from the list." : deleteReason);
     }
 
     private void updateSummary() {

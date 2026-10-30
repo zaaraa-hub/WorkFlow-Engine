@@ -166,6 +166,113 @@ public class TaskFlowService {
         return new Result(true, summary, output);
     }
 
+    /**
+     * Runs ONLY the task at this row, using the backend's executeSingleTask.
+     * The backend method silently does nothing when the task is not allowed to run,
+     * so we check the rules first (getExecutionBlockReason) and tell the user why.
+     */
+    public Result executeSelectedTask(int index) {
+        String reason = getExecutionBlockReason(index);
+        if (reason != null) {
+            return fail(reason);
+        }
+
+        Task task = tasks[index];
+        String output = capture(() -> engine.executeSingleTask(task, tasks, taskCount));
+
+        String label = "Task " + task.getTaskId() + " (" + task.getTaskName() + ")";
+        if (COMPLETED.equals(task.getStatus())) {
+            return new Result(true, label + " completed.", output);
+        }
+        if (FAILED.equals(task.getStatus())) {
+            return new Result(false, label + " failed after its retries. See Execution Logs.", output);
+        }
+        return new Result(false, label + " was not executed.", output);
+    }
+
+    /** null = this task may run now. Otherwise the reason it is blocked, written for the user. */
+    public String getExecutionBlockReason(int index) {
+        Task task = getTask(index);
+        if (task == null) {
+            return "Select a task first.";
+        }
+        String label = "Task " + task.getTaskId() + " (" + task.getTaskName() + ")";
+
+        if (!PENDING.equals(task.getStatus())) {
+            return "Cannot run " + label + ": its status is " + task.getStatus()
+                    + ". Only Pending tasks can run - use Reset Statuses to run it again.";
+        }
+
+        int dependencyId = task.getDependencyId();
+        if (dependencyId != -1) {
+            int dependencyIndex = findIndexById(dependencyId);
+            if (dependencyIndex == -1) {
+                return "Cannot run " + label + ": its prerequisite Task " + dependencyId + " does not exist.";
+            }
+            Task prerequisite = tasks[dependencyIndex];
+            if (!COMPLETED.equals(prerequisite.getStatus())) {
+                return "Cannot run " + label + ": prerequisite Task " + dependencyId
+                        + " (" + prerequisite.getTaskName() + ") is " + prerequisite.getStatus() + ".";
+            }
+        }
+
+        // Final guard: use the backend's own rule too, so we never disagree with it.
+        if (!checker.isDependencyCompleted(task, tasks, taskCount)) {
+            return "Cannot run " + label + ": its prerequisites are not completed.";
+        }
+        return null;
+    }
+
+    /**
+     * Removes the task at this row from the list. Same rule as the console version:
+     * a task that other tasks depend on cannot be deleted. Nothing is written to
+     * tasks.txt until the user presses Save.
+     */
+    public Result deleteTask(int index) {
+        Task task = getTask(index);
+        if (task == null) {
+            return fail("Select a task first.");
+        }
+        String reason = getDeleteBlockReason(index);
+        if (reason != null) {
+            return fail(reason);
+        }
+
+        String label = "Task " + task.getTaskId() + " (" + task.getTaskName() + ")";
+        for (int i = index; i < taskCount - 1; i++) {
+            tasks[i] = tasks[i + 1];
+        }
+        tasks[taskCount - 1] = null;
+        taskCount--;
+        return ok(label + " deleted. Press Save Tasks to keep this change in tasks.txt.");
+    }
+
+    /** null = this task may be deleted. Otherwise the reason it cannot be. */
+    public String getDeleteBlockReason(int index) {
+        Task task = getTask(index);
+        if (task == null) {
+            return "Select a task first.";
+        }
+        StringBuilder dependents = new StringBuilder();
+        int count = 0;
+        for (int i = 0; i < taskCount; i++) {
+            if (i != index && tasks[i].getDependencyId() == task.getTaskId()) {
+                if (count > 0) {
+                    dependents.append(", ");
+                }
+                dependents.append("Task ").append(tasks[i].getTaskId())
+                        .append(" (").append(tasks[i].getTaskName()).append(")");
+                count++;
+            }
+        }
+        if (count > 0) {
+            return "Cannot delete Task " + task.getTaskId() + " (" + task.getTaskName() + "): "
+                    + dependents + (count == 1 ? " depends" : " depend")
+                    + " on it. Delete the dependent task first.";
+        }
+        return null;
+    }
+
     /** Sets every task back to Pending so the workflow can run again. */
     public Result resetStatuses() {
         if (taskCount == 0) {
