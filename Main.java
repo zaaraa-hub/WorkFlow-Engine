@@ -133,8 +133,28 @@ public class Main {
                         break;
                     }
 
-                    tasks[0].setShouldSucceed(true);
+                    System.out.println("\n===== RETRY TEST =====");
+                    System.out.println("1. Test successful task");
+                    System.out.println("2. Test failed task and retries");
+                    System.out.print("Choose test: ");
+
+                    int testChoice = input.nextInt();
+
+                    if (testChoice == 1) {
+                        tasks[0].setShouldSucceed(true);
+                    } else if (testChoice == 2) {
+                        tasks[0].setShouldSucceed(false);
+                    } else {
+                        System.out.println("Invalid choice.");
+                        break;
+                    }
+
+                    for (int i = 0; i < taskCount; i++) {
+                        tasks[i].resetStatus();
+                    }
+
                     engine.executeWorkflow(tasks, taskCount);
+
                     tasks[0].setShouldSucceed(true);
                     break;
                 case 9:
