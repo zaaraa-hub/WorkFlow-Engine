@@ -1,0 +1,7 @@
+# Compiled Java files
+out/
+*.class
+
+# Runtime data
+execution.log
+tasks.txt
