@@ -8,7 +8,7 @@ public class Main {
         Task[] tasks = new Task[10];
         int taskCount = 0;
 
-        Workflow workflow = new Workflow(10);
+        Workflow workflow = new Workflow();
         WorkflowEngine engine = new WorkflowEngine();
         DependencyChecker checker = new DependencyChecker();
         FileManager fileManager = new FileManager();
