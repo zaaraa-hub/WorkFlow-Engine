@@ -2,11 +2,10 @@
 import java.util.Scanner;
 
 public class Main {
-    public static void main(String[] args) {
-        Scanner input = new Scanner(System.in);
 
-        Task[] tasks = new Task[10];
-        int taskCount = 0;
+    public static void main(String[] args) {
+
+        Scanner input = new Scanner(System.in);
 
         Workflow workflow = new Workflow();
         WorkflowEngine engine = new WorkflowEngine();
@@ -39,58 +38,50 @@ public class Main {
 
             switch (choice) {
 
+                // ADD TASK
                 case 1:
-                    if (taskCount < tasks.length) {
-                        System.out.print("Enter task ID: ");
-                        int id = input.nextInt();
-                        input.nextLine();
 
-                        boolean duplicate = false;
+                    System.out.print("Enter task ID: ");
+                    int id = input.nextInt();
+                    input.nextLine();
 
-                        for (int i = 0; i < taskCount; i++) {
-                            if (tasks[i].getTaskId() == id) {
-                                duplicate = true;
-                                break;
-                            }
-                        }
+                    System.out.print("Enter task name: ");
+                    String name = input.nextLine();
 
-                        if (duplicate) {
-                            System.out.println("Task ID already exists.");
-                            break;
-                        }
+                    System.out.print("Enter dependency ID (-1 for none): ");
+                    int dependencyId = input.nextInt();
+                    input.nextLine();
 
-                        System.out.print("Enter task name: ");
-                        String name = input.nextLine();
+                    Task task = new Task(id, name);
+                    task.setDependencyId(dependencyId);
 
-                        Task task = new Task(id, name);
+                    Task[] currentTasks = workflow.getTasks();
 
-                        System.out.print("Enter dependency ID (-1 for none): ");
-                        int dependencyId = input.nextInt();
-                        input.nextLine();
-
-                        task.setDependencyId(dependencyId);
-
-                        if (!checker.isDependencyValid(
-                                task, tasks, taskCount)) {
-                            System.out.println("Invalid dependency.");
-                            break;
-                        }
-
-                        tasks[taskCount] = task;
-                        taskCount++;
-                        workflow.addTask(task);
-
-                    } else {
-                        System.out.println("Task limit reached.");
+                    if (!checker.isDependencyValid(
+                            task, currentTasks, workflow.getTaskCount())) {
+                        System.out.println("Invalid dependency.");
+                        break;
                     }
+
+                    try {
+                        workflow.addTask(task);
+                        System.out.println("Task added successfully!");
+                    } catch (IllegalArgumentException e) {
+                        System.out.println(e.getMessage());
+                    }
+
                     break;
 
+                // DISPLAY TASKS
                 case 2:
+
                     workflow.displayTasks();
                     break;
 
+                // EXECUTE SELECTED TASK
                 case 3:
-                    if (taskCount == 0) {
+
+                    if (workflow.getTaskCount() == 0) {
                         System.out.println("No tasks available.");
                         break;
                     }
@@ -99,54 +90,104 @@ public class Main {
                     int selectedId = input.nextInt();
                     input.nextLine();
 
-                    Task selectedTask = null;
-
-                    for (int i = 0; i < taskCount; i++) {
-                        if (tasks[i].getTaskId() == selectedId) {
-                            selectedTask = tasks[i];
-                            break;
-                        }
-                    }
+                    Task selectedTask = workflow.getTaskById(selectedId);
 
                     if (selectedTask == null) {
                         System.out.println("Task not found.");
                     } else {
+
+                        Task[] tasks = workflow.getTasks();
+
                         engine.executeSingleTask(
-                                selectedTask, tasks, taskCount);
+                                selectedTask,
+                                tasks,
+                                workflow.getTaskCount());
                     }
+
                     break;
 
+                // EXECUTE WORKFLOW
                 case 4:
-                    engine.executeWorkflow(tasks, taskCount);
+
+                    if (workflow.getTaskCount() == 0) {
+                        System.out.println("No tasks available.");
+                        break;
+                    }
+
+                    Task[] executionTasks = workflow.getTasks();
+
+                    if (checker.hasCircularDependency(
+                            executionTasks, workflow.getTaskCount())) {
+                        System.out.println(
+                                "Execution stopped: circular dependency detected!");
+                        break;
+                    }
+
+                    engine.executeWorkflow(
+                            executionTasks,
+                            workflow.getTaskCount());
+
                     break;
 
+                // SAVE TASKS
                 case 5:
-                    fileManager.saveTasks(tasks, taskCount);
+
+                    if (workflow.getTaskCount() == 0) {
+                        System.out.println("No tasks to save.");
+                        break;
+                    }
+
+                    fileManager.saveTasks(
+                            workflow.getTasks(),
+                            workflow.getTaskCount());
+
                     break;
 
+                // LOAD TASKS
                 case 6:
-                    taskCount = fileManager.loadTasks(tasks);
+
+                    Task[] loadedTasks = fileManager.loadTasks();
 
                     workflow.clearTasks();
 
-                    for (int i = 0; i < taskCount; i++) {
-                        workflow.addTask(tasks[i]);
+                    try {
+                        for (Task loadedTask : loadedTasks) {
+                            workflow.addTask(loadedTask);
+                        }
+
+                        System.out.println(
+                                "Loaded " + workflow.getTaskCount()
+                                        + " task(s) successfully!");
+
+                    } catch (IllegalArgumentException e) {
+                        System.out.println(
+                                "Error loading tasks: " + e.getMessage());
                     }
+
                     break;
 
+                // VIEW EXECUTION LOGS
                 case 7:
+
                     logger.displayLogs();
                     break;
 
+                // CHECK CIRCULAR DEPENDENCIES
                 case 8:
-                    if (taskCount >= 2) {
-                        int originalDependency = tasks[0].getDependencyId();
 
-                        tasks[0].setDependencyId(
-                                tasks[1].getTaskId());
+                    int taskCount = workflow.getTaskCount();
+
+                    if (taskCount >= 2) {
+
+                        Task firstTask = workflow.getTask(0);
+
+                        int originalDependency = firstTask.getDependencyId();
+
+                        firstTask.setDependencyId(
+                                workflow.getTask(1).getTaskId());
 
                         if (checker.hasCircularDependency(
-                                tasks, taskCount)) {
+                                workflow.getTasks(), taskCount)) {
                             System.out.println(
                                     "Circular dependency detected!");
                         } else {
@@ -154,15 +195,19 @@ public class Main {
                                     "No circular dependency found.");
                         }
 
-                        tasks[0].setDependencyId(originalDependency);
+                        firstTask.setDependencyId(originalDependency);
 
                     } else {
-                        System.out.println("Add at least 2 tasks first.");
+                        System.out.println(
+                                "Add at least 2 tasks first.");
                     }
+
                     break;
 
+                // TEST TASK RETRY
                 case 9:
-                    if (taskCount == 0) {
+
+                    if (workflow.getTaskCount() == 0) {
                         System.out.println("Add a task first!");
                         break;
                     }
@@ -176,41 +221,50 @@ public class Main {
                     input.nextLine();
 
                     if (testChoice == 1) {
-                        tasks[0].setShouldSucceed(true);
+                        workflow.getTask(0).setShouldSucceed(true);
                     } else if (testChoice == 2) {
-                        tasks[0].setShouldSucceed(false);
+                        workflow.getTask(0).setShouldSucceed(false);
                     } else {
                         System.out.println("Invalid choice.");
                         break;
                     }
 
-                    for (int i = 0; i < taskCount; i++) {
-                        tasks[i].resetStatus();
+                    for (int i = 0; i < workflow.getTaskCount(); i++) {
+                        workflow.getTask(i).resetStatus();
                     }
 
-                    engine.executeWorkflow(tasks, taskCount);
+                    engine.executeWorkflow(
+                            workflow.getTasks(),
+                            workflow.getTaskCount());
 
-                    tasks[0].setShouldSucceed(true);
+                    workflow.getTask(0).setShouldSucceed(true);
+
                     break;
 
+                // RESET WORKFLOW
                 case 10:
-                    for (int i = 0; i < taskCount; i++) {
-                        tasks[i].resetStatus();
+
+                    for (int i = 0; i < workflow.getTaskCount(); i++) {
+                        workflow.getTask(i).resetStatus();
                     }
 
                     System.out.println(
                             "Workflow statuses reset successfully!");
+
                     break;
 
+                // WORKFLOW SUMMARY
                 case 11:
+
                     int completed = 0;
                     int failed = 0;
                     int pending = 0;
                     int skipped = 0;
                     int running = 0;
 
-                    for (int i = 0; i < taskCount; i++) {
-                        String status = tasks[i].getStatus();
+                    for (int i = 0; i < workflow.getTaskCount(); i++) {
+
+                        String status = workflow.getTask(i).getStatus();
 
                         if (status.equals("Completed")) {
                             completed++;
@@ -226,20 +280,26 @@ public class Main {
                     }
 
                     System.out.println("\n===== WORKFLOW SUMMARY =====");
-                    System.out.println("Total tasks: " + taskCount);
+                    System.out.println(
+                            "Total tasks: " + workflow.getTaskCount());
                     System.out.println("Completed: " + completed);
                     System.out.println("Failed: " + failed);
                     System.out.println("Pending: " + pending);
                     System.out.println("Skipped: " + skipped);
                     System.out.println("Running: " + running);
+
                     break;
 
+                // CLEAR EXECUTION LOGS
                 case 12:
+
                     logger.clearLogs();
                     break;
 
+                // DELETE TASK
                 case 13:
-                    if (taskCount == 0) {
+
+                    if (workflow.getTaskCount() == 0) {
                         System.out.println(
                                 "No tasks available to delete.");
                         break;
@@ -252,45 +312,45 @@ public class Main {
                     int deleteIndex = -1;
                     boolean hasDependent = false;
 
-                    for (int i = 0; i < taskCount; i++) {
-                        if (tasks[i].getTaskId() == deleteId) {
+                    for (int i = 0; i < workflow.getTaskCount(); i++) {
+
+                        Task current = workflow.getTask(i);
+
+                        if (current.getTaskId() == deleteId) {
                             deleteIndex = i;
                         }
 
-                        if (tasks[i].getDependencyId() == deleteId) {
+                        if (current.getDependencyId() == deleteId) {
                             hasDependent = true;
                         }
                     }
 
                     if (deleteIndex == -1) {
                         System.out.println("Task not found.");
+
                     } else if (hasDependent) {
                         System.out.println(
                                 "Cannot delete! Other tasks depend on this task.");
+
                     } else {
-                        for (int i = deleteIndex; i < taskCount - 1; i++) {
-                            tasks[i] = tasks[i + 1];
-                        }
+                        workflow.deleteTask(deleteIndex);
 
-                        tasks[taskCount - 1] = null;
-                        taskCount--;
-
-                        workflow.clearTasks();
-
-                        for (int i = 0; i < taskCount; i++) {
-                            workflow.addTask(tasks[i]);
-                        }
-
-                        System.out.println("Task deleted successfully!");
+                        System.out.println(
+                                "Task deleted successfully!");
                     }
+
                     break;
 
+                // EXIT
                 case 0:
+
                     System.out.println(
                             "Exiting TaskFlow. Goodbye!");
+
                     break;
 
                 default:
+
                     System.out.println(
                             "Invalid choice. Try again.");
             }
